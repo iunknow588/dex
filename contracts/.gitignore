@@ -1,0 +1,45 @@
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 编译输出
+artifacts/
+cache/
+typechain/
+typechain-types/
+
+# 部署信息
+deployments/localhost/
+deployments/hardhat/
+
+# 环境变量
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 覆盖率报告
+coverage/
+coverage.json
+
+# Hardhat
+.hardhat/
+
+# TypeScript
+*.tsbuildinfo
+
+# 测试结果
+test-results/
+junit.xml

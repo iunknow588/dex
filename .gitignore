@@ -1,0 +1,92 @@
+# ==================================================
+# 智运通交易系统 (LuckEngine) - Git忽略文件
+# ==================================================
+
+# 🚫 用户要求：文档和脚本目录完全排除
+docs/
+scripts/
+
+# 📦 依赖和构建产物
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# 🔐 环境变量和敏感配置
+.env
+.env.local
+.env.production
+.env.development
+env.example
+
+# 📝 日志文件
+*.log
+dev_output.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🏃 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 📊 测试和覆盖率
+coverage/
+*.lcov
+.nyc_output
+test-results/
+junit.xml
+
+# 💻 IDE和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🖥️ 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 📦 包管理锁定文件
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 🗂️ 临时和缓存文件
+*.tmp
+*.temp
+.cache/
+
+# ☁️ 部署平台文件
+.vercel/
+
+# 🔗 智能合约构建产物（开发时生成）
+contracts/artifacts/
+contracts/cache/
+contracts/typechain/
+contracts/typechain-types/
+contracts/.hardhat/
+contracts/deployments/localhost/
+contracts/deployments/hardhat/
+
+# 📋 项目报告文件
+PROJECT_SIZE_REPORT.md
+
+# 📦 压缩包
+*.tgz
+*.tar.gz
+*.zip
+
+# 🔍 搜索索引
+*.index
+
+# 📝 编辑器备份
+*~
