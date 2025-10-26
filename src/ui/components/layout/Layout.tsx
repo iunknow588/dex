@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
-import { useUIStore } from '../../data/store/uiStore';
+import { useUIStore } from '../../../data/store/uiStore';
 
 interface LayoutProps {
   children: React.ReactNode;

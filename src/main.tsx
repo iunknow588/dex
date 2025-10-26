@@ -6,7 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
 import { ThemeContextProvider } from './ui/contexts/ThemeContext';
-import './styles/index.css';
+import './ui/styles/index.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
