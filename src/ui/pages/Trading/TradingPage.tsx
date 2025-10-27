@@ -9,8 +9,8 @@ import {
   useTheme,
   useMediaQuery
 } from '@mui/material';
-import { useTradingStore } from '../../data/store/tradingStore';
-import { PriceMonitorService } from '../../business/core/services/monitoring/PriceMonitorService';
+import { useTradingStore } from '../../../data/store/tradingStore';
+import { PriceMonitorService } from '../../../business/core/services/monitoring/PriceMonitorService';
 
 // 导入交易组件（保持原有结构）
 import { TradingInterface } from '../../components/trading/TradingInterface';

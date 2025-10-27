@@ -25,7 +25,7 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     // 从localStorage读取主题设置，默认使用浅色主题
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('luckengine_theme');
+      const savedTheme = localStorage.getItem('luckee_dao_theme');
       return (savedTheme as 'light' | 'dark') || 'light';
     }
     return 'light';
@@ -34,7 +34,7 @@ export const ThemeContextProvider: React.FC<ThemeContextProviderProps> = ({ chil
   const setTheme = (newTheme: 'light' | 'dark') => {
     setThemeState(newTheme);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('luckengine_theme', newTheme);
+      localStorage.setItem('luckee_dao_theme', newTheme);
       // 更新document的class以支持CSS主题切换
       document.documentElement.className = newTheme === 'dark' ? 'dark-theme' : '';
     }

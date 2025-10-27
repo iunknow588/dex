@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open }) => {
       {menuItems.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname === item.path;
-        
+
         return (
           <ListItem key={item.text} disablePadding>
             <ListItemButton

@@ -11,7 +11,7 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import { Menu as MenuIcon, Brightness4 as DarkIcon, Brightness7 as LightIcon } from '@mui/icons-material';
-import { useUIStore } from '../../data/store/uiStore';
+import { useUIStore } from '../../../data/store/uiStore';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { WalletConnector } from '../wallet/WalletConnector';
 
@@ -35,11 +35,11 @@ export const Header: React.FC = () => {
             <MenuIcon />
           </IconButton>
         )}
-        
+
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           智运通交易系统
         </Typography>
-        
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControlLabel
             control={

@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          © 2024 智运通交易系统 (LuckEngine). 基于 Injective 链的专业级去中心化交易平台.
+          © 2025年10月 智运通交易系统 (LuckEngine). 基于 Injective 链的专业级去中心化交易平台.
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Link href="#" variant="body2" color="text.secondary">

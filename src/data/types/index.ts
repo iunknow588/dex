@@ -59,8 +59,9 @@ export interface Trade {
 
 // 订单簿类型
 export interface OrderBook {
-  bids: Array<[string, string]>; // [price, quantity]
-  asks: Array<[string, string]>; // [price, quantity]
+  marketId?: string;
+  bids: Array<[string, string]> | Array<{price: string; quantity: string; total: string}>; // [price, quantity] 或 {price, quantity, total}
+  asks: Array<[string, string]> | Array<{price: string; quantity: string; total: string}>; // [price, quantity] 或 {price, quantity, total}
   timestamp: number;
 }
 
@@ -69,6 +70,7 @@ export interface MarketData {
   symbol: string;
   price: string;
   change24h: string;
+  change24hPercent: number;
   volume24h: string;
   high24h: string;
   low24h: string;
@@ -149,6 +151,12 @@ export interface LiquidationOpportunity {
   protocol?: string; // 借贷协议名称
   liquidationThreshold?: number; // 清算阈值
   maintenanceMarginRatio?: number; // 维持保证金比例
+  // 新增字段 - 基于官方文档的清算标准
+  worstPrice?: string; // 最差价格（破产价格或预言机价格）
+  liquidationStrategy?: 'positive_equity' | 'negative_equity'; // 清算策略
+  equityStatus?: 'positive' | 'negative'; // 权益状态
+  bankruptcyPrice?: string; // 破产价格
+  oraclePrice?: string; // 预言机价格
 }
 
 // 清算执行结果
@@ -200,5 +208,5 @@ export interface TradingFormData {
 }
 
 export interface FormErrors {
-  [key: string]: string;
+  [key: string]: string | undefined;
 }

@@ -9,6 +9,13 @@ export interface WalletState {
   network: string;
   balance: string;
   isConnecting: boolean;
+  wallet: {
+    isConnected: boolean;
+    address: string | null;
+    walletType: WalletType | null;
+    network: string;
+    balance: string;
+  };
 }
 
 interface WalletActions {
@@ -28,6 +35,13 @@ export const useWalletStore = create<WalletStore>((set) => ({
   network: 'injective-1',
   balance: '0',
   isConnecting: false,
+  wallet: {
+    isConnected: false,
+    address: null,
+    walletType: null,
+    network: 'injective-1',
+    balance: '0'
+  },
 
   // 操作方法
   connectWallet: async (walletType: WalletType) => {
@@ -43,7 +57,14 @@ export const useWalletStore = create<WalletStore>((set) => ({
         isConnected: true,
         address: mockAddress,
         walletType,
-        isConnecting: false
+        isConnecting: false,
+        wallet: {
+          isConnected: true,
+          address: mockAddress,
+          walletType,
+          network: 'injective-1',
+          balance: '0'
+        }
       });
     } catch (error) {
       console.error('钱包连接失败:', error);
@@ -57,7 +78,14 @@ export const useWalletStore = create<WalletStore>((set) => ({
       isConnected: false,
       address: null,
       walletType: null,
-      balance: '0'
+      balance: '0',
+      wallet: {
+        isConnected: false,
+        address: null,
+        walletType: null,
+        network: 'injective-1',
+        balance: '0'
+      }
     });
   },
 

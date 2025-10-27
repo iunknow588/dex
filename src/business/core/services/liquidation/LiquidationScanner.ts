@@ -1,414 +1,332 @@
-import { LiquidationOpportunity } from '../../../../data/types';
+/**
+ * 清算机会扫描器
+ * 实时扫描可清算的仓位
+ */
 
-interface InjectivePosition {
+import { InjectiveService } from '../injective/InjectiveService';
+
+export interface LiquidationOpportunity {
+  id: string;
   marketId: string;
   subaccountId: string;
-  positionSize: string;
-  entryPrice: string;
-  margin: string;
-  liquidationPrice: string;
-  markPrice: string;
-  unrealizedPnl: string;
-  maintenanceMarginRatio: string;
+  liquidationAmount: string;
+  collateralAsset: string;
+  debtAsset: string;
+  liquidationBonus: number;
+  healthFactor: number;
+  estimatedProfit: number;
+  timestamp?: number;
+  protocol?: string;
 }
 
-interface InjectiveMarket {
-  marketId: string;
-  ticker: string;
-  baseDenom: string;
-  quoteDenom: string;
-  makerFeeRate: string;
-  takerFeeRate: string;
-  maintenanceMarginRatio: string;
-  liquidationReward: string;
+export interface ScannerConfig {
+  scanInterval: number; // 扫描间隔（毫秒）
+  maxConcurrentScans: number; // 最大并发扫描数
+  enabledMarkets: string[]; // 启用的市场列表
+  minProfitThreshold: number; // 最小收益阈值
+}
+
+export interface ScanResult {
+  opportunities: LiquidationOpportunity[];
+  scanTime: number;
+  totalScanned: number;
+  errors: string[];
 }
 
 export class LiquidationScanner {
-  private static instance: LiquidationScanner;
-  private scanInterval: NodeJS.Timeout | null = null;
-  private listeners: Set<(opportunities: LiquidationOpportunity[]) => void> = new Set();
-  private injectiveRpcUrl: string;
-  private markets: Map<string, InjectiveMarket> = new Map();
+  private injectiveService: InjectiveService;
+  private config: ScannerConfig;
+  private isScanning: boolean = false;
+  private scanTimer?: NodeJS.Timeout;
+  private onOpportunityFound?: (opportunity: LiquidationOpportunity) => void;
+  private onScanComplete?: (result: ScanResult) => void;
 
-  private constructor() {
-    // Injective主网RPC地址
-    this.injectiveRpcUrl = 'https://api.injective.network';
-    this.initializeMarkets();
-  }
-
-  static getInstance(): LiquidationScanner {
-    if (!LiquidationScanner.instance) {
-      LiquidationScanner.instance = new LiquidationScanner();
-    }
-    return LiquidationScanner.instance;
-  }
-
-  /**
-   * 扫描可清算的头寸
-   * 基于Injective Exchange模块获取真实的衍生品仓位数据
-   */
-  async scanLiquidationOpportunities(): Promise<LiquidationOpportunity[]> {
-    try {
-      const opportunities: LiquidationOpportunity[] = [];
-
-      // 获取所有活跃的市场
-      const activeMarkets = Array.from(this.markets.values());
-
-      // 并发扫描每个市场的仓位
-      const scanPromises = activeMarkets.map(market => this.scanMarketPositions(market));
-      const marketPositions = await Promise.all(scanPromises);
-
-      // 合并所有市场的清算机会
-      for (const positions of marketPositions) {
-        for (const position of positions) {
-          const opportunity = await this.convertPositionToOpportunity(position);
-          if (opportunity && this.validateLiquidationOpportunity(opportunity)) {
-            opportunities.push(opportunity);
-          }
-        }
-      }
-
-      // 按预估利润降序排序
-      return opportunities.sort((a, b) => b.estimatedProfit - a.estimatedProfit);
-
-    } catch (error) {
-      console.error('扫描清算机会失败:', error);
-      // 返回模拟数据作为后备
-      return this.getFallbackOpportunities();
-    }
+  constructor(
+    injectiveService: InjectiveService,
+    config: Partial<ScannerConfig> = {}
+  ) {
+    this.injectiveService = injectiveService;
+    this.config = {
+      scanInterval: 10000, // 10秒
+      maxConcurrentScans: 5,
+      enabledMarkets: [],
+      minProfitThreshold: 10, // 最小10美元收益
+      ...config,
+    };
   }
 
   /**
-   * 扫描特定市场的仓位
+   * 设置回调函数
    */
-  private async scanMarketPositions(market: InjectiveMarket): Promise<InjectivePosition[]> {
-    try {
-      // 模拟从Injective Indexer API获取仓位数据
-      // 实际实现中会调用真实的API
-      const positions: InjectivePosition[] = [];
-
-      // 生成模拟仓位数据（基于真实的市场参数）
-      const positionCount = Math.floor(Math.random() * 20) + 5;
-
-      for (let i = 0; i < positionCount; i++) {
-        const positionSize = (Math.random() * 1000 + 100).toFixed(4);
-        const entryPrice = (Math.random() * 50 + 10).toFixed(4);
-        const currentPrice = (parseFloat(entryPrice) * (0.8 + Math.random() * 0.4)).toFixed(4);
-
-        // 计算维持保证金
-        const notionalValue = parseFloat(positionSize) * parseFloat(currentPrice);
-        const maintenanceMarginRatio = parseFloat(market.maintenanceMarginRatio);
-        const maintenanceMargin = (notionalValue * maintenanceMarginRatio).toFixed(4);
-
-        // 计算清算价格（基于维持保证金比例）
-        const liquidationPrice = (parseFloat(entryPrice) * (1 - maintenanceMarginRatio)).toFixed(4);
-
-        // 检查是否接近清算
-        const healthFactor = parseFloat(currentPrice) / parseFloat(liquidationPrice);
-
-        // 只返回健康因子小于1.1的仓位（接近清算）
-        if (healthFactor < 1.1) {
-          positions.push({
-            marketId: market.marketId,
-            subaccountId: `0x${Math.random().toString(16).substring(2, 66)}`,
-            positionSize,
-            entryPrice,
-            margin: (parseFloat(maintenanceMargin) * 1.2).toFixed(4), // 额外保证金
-            liquidationPrice,
-            markPrice: currentPrice,
-            unrealizedPnl: ((parseFloat(currentPrice) - parseFloat(entryPrice)) * parseFloat(positionSize)).toFixed(4),
-            maintenanceMarginRatio: market.maintenanceMarginRatio
-          });
-        }
-      }
-
-      return positions;
-
-    } catch (error) {
-      console.error(`扫描市场 ${market.marketId} 失败:`, error);
-      return [];
-    }
+  setCallbacks(
+    onOpportunityFound?: (opportunity: LiquidationOpportunity) => void,
+    onScanComplete?: (result: ScanResult) => void
+  ) {
+    this.onOpportunityFound = onOpportunityFound;
+    this.onScanComplete = onScanComplete;
   }
 
   /**
-   * 将Injective仓位转换为清算机会
+   * 开始扫描
    */
-  private async convertPositionToOpportunity(position: InjectivePosition): Promise<LiquidationOpportunity | null> {
-    try {
-      const market = this.markets.get(position.marketId);
-      if (!market) return null;
-
-      const positionSize = parseFloat(position.positionSize);
-      const markPrice = parseFloat(position.markPrice);
-      const liquidationPrice = parseFloat(position.liquidationPrice);
-      const margin = parseFloat(position.margin);
-
-      // 计算健康因子
-      const healthFactor = markPrice / liquidationPrice;
-
-      // 只处理健康因子小于1的仓位
-      if (healthFactor >= 1) return null;
-
-      // 计算最大清算金额
-      const maxLiquidationAmount = Math.min(positionSize * 0.5, margin * 2);
-
-      // 清算奖励（基于Injective的清算奖励设置）
-      const liquidationBonus = parseFloat(market.liquidationReward) || 0.08;
-
-      // 计算预估利润
-      const costs = this.calculateLiquidationCost(maxLiquidationAmount);
-      const reward = maxLiquidationAmount * markPrice * liquidationBonus;
-      const estimatedProfit = reward - costs.totalCost;
-
-      return {
-        id: `${position.marketId}_${position.subaccountId}_${Date.now()}`,
-        marketId: position.marketId,
-        subaccountId: position.subaccountId,
-        position: {
-          positionSize: position.positionSize,
-          entryPrice: position.entryPrice,
-          margin: position.margin,
-          liquidationPrice: position.liquidationPrice,
-          markPrice: position.markPrice,
-          unrealizedPnl: position.unrealizedPnl
-        },
-        collateralAsset: market.baseDenom,
-        debtAsset: market.quoteDenom,
-        collateralAmount: positionSize * markPrice,
-        debtAmount: margin,
-        liquidationBonus,
-        healthFactor,
-        maxLiquidationAmount,
-        estimatedProfit,
-        timestamp: Date.now(),
-        protocol: 'Injective Exchange',
-        liquidationThreshold: 1.0,
-        maintenanceMarginRatio: parseFloat(position.maintenanceMarginRatio)
-      };
-
-    } catch (error) {
-      console.error('转换仓位数据失败:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 初始化市场数据
-   */
-  private async initializeMarkets(): Promise<void> {
-    // 模拟Injective的主要衍生品市场
-    const mockMarkets: InjectiveMarket[] = [
-      {
-        marketId: '0x0000000000000000000000000000000000000000000000000000000000000001',
-        ticker: 'INJ/USDT-PERP',
-        baseDenom: 'INJ',
-        quoteDenom: 'USDT',
-        makerFeeRate: '-0.0001',
-        takerFeeRate: '0.001',
-        maintenanceMarginRatio: '0.05',
-        liquidationReward: '0.08'
-      },
-      {
-        marketId: '0x0000000000000000000000000000000000000000000000000000000000000002',
-        ticker: 'ATOM/USDT-PERP',
-        baseDenom: 'ATOM',
-        quoteDenom: 'USDT',
-        makerFeeRate: '-0.0001',
-        takerFeeRate: '0.001',
-        maintenanceMarginRatio: '0.05',
-        liquidationReward: '0.08'
-      },
-      {
-        marketId: '0x0000000000000000000000000000000000000000000000000000000000000003',
-        ticker: 'OSMO/USDT-PERP',
-        baseDenom: 'OSMO',
-        quoteDenom: 'USDT',
-        makerFeeRate: '-0.0001',
-        takerFeeRate: '0.001',
-        maintenanceMarginRatio: '0.05',
-        liquidationReward: '0.08'
-      }
-    ];
-
-    mockMarkets.forEach(market => {
-      this.markets.set(market.marketId, market);
-    });
-  }
-
-  /**
-   * 获取后备清算机会（当API调用失败时使用）
-   */
-  private getFallbackOpportunities(): LiquidationOpportunity[] {
-    const opportunities: LiquidationOpportunity[] = [];
-    const assets = ['INJ', 'USDT', 'ATOM', 'OSMO'];
-
-    const count = Math.floor(Math.random() * 4) + 3;
-
-    for (let i = 0; i < count; i++) {
-      const collateralAsset = assets[Math.floor(Math.random() * assets.length)];
-      const debtAsset = assets[Math.floor(Math.random() * assets.length)];
-
-      const finalDebtAsset = collateralAsset === debtAsset ?
-        assets[(assets.indexOf(collateralAsset) + 1) % assets.length] : debtAsset;
-
-      const collateralAmount = Math.floor(Math.random() * 10000) + 1000;
-      const debtAmount = Math.floor(Math.random() * 5000) + 500;
-      const healthFactor = 0.7 + Math.random() * 0.25; // 0.7-0.95
-      const liquidationBonus = 0.05 + Math.random() * 0.05;
-      const maxLiquidationAmount = Math.min(debtAmount * 0.5, collateralAmount * 0.5);
-      const estimatedProfit = maxLiquidationAmount * liquidationBonus * 0.8;
-
-      opportunities.push({
-        id: `fallback_${Date.now()}_${i}`,
-        marketId: `market_${i}`,
-        subaccountId: `subaccount_${i}`,
-        position: {
-          positionSize: (Math.random() * 100 + 10).toFixed(2),
-          entryPrice: (Math.random() * 50 + 10).toFixed(4),
-          margin: (Math.random() * 1000 + 100).toFixed(4),
-          liquidationPrice: (Math.random() * 20 + 5).toFixed(4),
-          markPrice: (Math.random() * 50 + 10).toFixed(4),
-          unrealizedPnl: (Math.random() * 200 - 100).toFixed(4)
-        },
-        collateralAsset,
-        debtAsset: finalDebtAsset,
-        collateralAmount,
-        debtAmount,
-        liquidationBonus,
-        healthFactor,
-        maxLiquidationAmount,
-        estimatedProfit,
-        timestamp: Date.now(),
-        protocol: 'Injective Exchange (Fallback)',
-        liquidationThreshold: 1.0,
-        maintenanceMarginRatio: 0.05
-      });
+  startScanning(): void {
+    if (this.isScanning) {
+      console.warn('扫描器已在运行中');
+      return;
     }
 
-    return opportunities.sort((a, b) => b.estimatedProfit - a.estimatedProfit);
-  }
-
-  /**
-   * 开始定期扫描清算机会
-   */
-  startScanning(intervalMs: number = 30000): void {
-    this.stopScanning(); // 确保没有重复的扫描
-
-    this.scanInterval = setInterval(async () => {
-      try {
-        const opportunities = await this.scanLiquidationOpportunities();
-        this.notifyListeners(opportunities);
-      } catch (error) {
-        console.error('清算机会扫描失败:', error);
-      }
-    }, intervalMs);
-
+    this.isScanning = true;
+    console.log('开始清算机会扫描...');
+    
     // 立即执行一次扫描
-    this.scanLiquidationOpportunities().then(opportunities => {
-      this.notifyListeners(opportunities);
-    }).catch(error => {
-      console.error('初始清算扫描失败:', error);
-    });
+    this.performScan();
+    
+    // 设置定时扫描
+    this.scanTimer = setInterval(() => {
+      this.performScan();
+    }, this.config.scanInterval);
   }
 
   /**
    * 停止扫描
    */
   stopScanning(): void {
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
+    if (!this.isScanning) {
+      return;
     }
+
+    this.isScanning = false;
+    
+    if (this.scanTimer) {
+      clearInterval(this.scanTimer);
+      this.scanTimer = undefined;
+    }
+    
+    console.log('清算机会扫描已停止');
   }
 
   /**
-   * 添加监听器
+   * 执行单次扫描
    */
-  addListener(callback: (opportunities: LiquidationOpportunity[]) => void): void {
-    this.listeners.add(callback);
-  }
+  async performScan(): Promise<ScanResult> {
+    const startTime = Date.now();
+    const opportunities: LiquidationOpportunity[] = [];
+    const errors: string[] = [];
+    let totalScanned = 0;
 
-  /**
-   * 移除监听器
-   */
-  removeListener(callback: (opportunities: LiquidationOpportunity[]) => void): void {
-    this.listeners.delete(callback);
-  }
+    try {
+      // 获取所有市场
+      const markets = await this.injectiveService.getAllMarkets();
+      const enabledMarkets = this.config.enabledMarkets.length > 0 
+        ? markets.filter(m => this.config.enabledMarkets.includes(m.marketId))
+        : markets;
 
-  /**
-   * 通知所有监听器
-   */
-  private notifyListeners(opportunities: LiquidationOpportunity[]): void {
-    this.listeners.forEach(callback => {
-      try {
-        callback(opportunities);
-      } catch (error) {
-        console.error('清算机会监听器执行失败:', error);
+      console.log(`开始扫描 ${enabledMarkets.length} 个市场...`);
+
+      // 并发扫描市场
+      const scanPromises = enabledMarkets.map(async (market) => {
+        try {
+          const marketOpportunities = await this.scanMarketForOpportunities(market.marketId);
+          opportunities.push(...marketOpportunities);
+          totalScanned++;
+        } catch (error) {
+          const errorMsg = `扫描市场 ${market.ticker} 失败: ${error instanceof Error ? error.message : '未知错误'}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+        }
+      });
+
+      // 等待所有扫描完成
+      await Promise.allSettled(scanPromises);
+
+      // 过滤低收益机会
+      const filteredOpportunities = opportunities.filter(
+        opp => opp.estimatedProfit >= this.config.minProfitThreshold
+      );
+
+      // 按收益排序
+      filteredOpportunities.sort((a, b) => b.estimatedProfit - a.estimatedProfit);
+
+      const result: ScanResult = {
+        opportunities: filteredOpportunities,
+        scanTime: Date.now() - startTime,
+        totalScanned,
+        errors,
+      };
+
+      console.log(`扫描完成: 发现 ${filteredOpportunities.length} 个清算机会，耗时 ${result.scanTime}ms`);
+
+      // 触发回调
+      if (this.onScanComplete) {
+        this.onScanComplete(result);
       }
-    });
+
+      // 通知新发现的机会
+      filteredOpportunities.forEach(opportunity => {
+        if (this.onOpportunityFound) {
+          this.onOpportunityFound(opportunity);
+        }
+      });
+
+      return result;
+    } catch (error) {
+      const errorMsg = `扫描过程中发生错误: ${error instanceof Error ? error.message : '未知错误'}`;
+      console.error(errorMsg);
+      errors.push(errorMsg);
+
+      const result: ScanResult = {
+        opportunities: [],
+        scanTime: Date.now() - startTime,
+        totalScanned,
+        errors,
+      };
+
+      if (this.onScanComplete) {
+        this.onScanComplete(result);
+      }
+
+      return result;
+    }
   }
 
   /**
-   * 验证清算机会的有效性
+   * 扫描单个市场的清算机会
    */
-  validateLiquidationOpportunity(opportunity: LiquidationOpportunity): boolean {
-    // 检查健康因子是否小于1（表示可清算）
-    if (opportunity.healthFactor >= 1) {
-      return false;
+  private async scanMarketForOpportunities(marketId: string): Promise<LiquidationOpportunity[]> {
+    const opportunities: LiquidationOpportunity[] = [];
+
+    try {
+      // 获取市场数据
+      const marketData = await this.injectiveService.getMarketData(marketId);
+      if (!marketData) {
+        return opportunities;
+      }
+
+      // 这里需要实现获取所有子账户的逻辑
+      // 由于 Injective 的限制，我们可能需要通过其他方式获取
+      // 暂时使用模拟数据演示
+      const mockSubaccounts = await this.getMockSubaccounts(marketId);
+
+      // 检查每个子账户的清算机会
+      for (const subaccountId of mockSubaccounts) {
+        try {
+          const validation = await this.injectiveService.validateLiquidationOpportunity(
+            marketId,
+            subaccountId
+          );
+
+          if (validation.isValid && validation.maxLiquidationAmount > 0) {
+            const opportunity = await this.createLiquidationOpportunity(
+              marketId,
+              subaccountId,
+              validation,
+              marketData
+            );
+
+            if (opportunity) {
+              opportunities.push(opportunity);
+            }
+          }
+        } catch (error) {
+          console.warn(`检查子账户 ${subaccountId} 失败:`, error);
+        }
+      }
+    } catch (error) {
+      console.error(`扫描市场 ${marketId} 失败:`, error);
     }
 
-    // 检查清算奖励是否在合理范围内
-    if (opportunity.liquidationBonus < 0.01 || opportunity.liquidationBonus > 0.15) {
-      return false;
-    }
-
-    // 检查预估利润是否为正
-    if (opportunity.estimatedProfit <= 0) {
-      return false;
-    }
-
-    return true;
+    return opportunities;
   }
 
   /**
-   * 计算清算成本
+   * 创建清算机会对象
    */
-  calculateLiquidationCost(liquidationAmount: number): {
-    flashLoanFee: number;
-    gasCost: number;
-    totalCost: number;
+  private async createLiquidationOpportunity(
+    marketId: string,
+    subaccountId: string,
+    validation: any,
+    marketData: any
+  ): Promise<LiquidationOpportunity | null> {
+    try {
+      const liquidationAmount = Math.min(
+        validation.maxLiquidationAmount,
+        parseFloat(marketData.price) * 1000 // 限制最大金额
+      );
+
+      const liquidationBonus = validation.liquidationBonus / 10000; // 转换为小数
+      const reward = liquidationAmount * liquidationBonus;
+      const flashLoanFee = liquidationAmount * 0.0009; // 0.09% 闪电贷费用
+      const gasCost = 5.5; // 预估 Gas 费用
+      const netProfit = reward - flashLoanFee - gasCost;
+
+      // 检查是否满足最小收益要求
+      if (netProfit < this.config.minProfitThreshold) {
+        return null;
+      }
+
+      return {
+        id: `${marketId}-${subaccountId}-${Date.now()}`,
+        marketId,
+        subaccountId,
+        liquidationAmount: liquidationAmount.toString(),
+        collateralAsset: 'USDT', // 需要根据实际情况确定
+        debtAsset: 'USDT',
+        liquidationBonus,
+        healthFactor: validation.healthFactor / 10000, // 转换为小数
+        estimatedProfit: netProfit,
+        timestamp: Date.now(),
+        protocol: 'Injective',
+      };
+    } catch (error) {
+      console.error('创建清算机会失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 获取模拟子账户列表
+   * 实际实现中需要从链上获取真实的子账户
+   */
+  private async getMockSubaccounts(_marketId: string): Promise<string[]> {
+    // 这里返回模拟的子账户ID
+    // 实际实现中需要查询链上数据
+    return [
+      'inj1...mock1',
+      'inj1...mock2',
+      'inj1...mock3',
+    ];
+  }
+
+  /**
+   * 获取扫描状态
+   */
+  getScanStatus(): {
+    isScanning: boolean;
+    config: ScannerConfig;
   } {
-    const flashLoanFee = liquidationAmount * 0.0009; // 0.09% 闪电贷费用
-    const gasCost = 3.50; // 预估Gas费用
-    const totalCost = flashLoanFee + gasCost;
-
     return {
-      flashLoanFee,
-      gasCost,
-      totalCost,
+      isScanning: this.isScanning,
+      config: this.config,
     };
   }
 
   /**
-   * 计算清算收益
+   * 更新配置
    */
-  calculateLiquidationProfit(
-    liquidationAmount: number,
-    liquidationBonus: number
-  ): {
-    liquidationReward: number;
-    netProfit: number;
-    profitMargin: number;
-  } {
-    const costs = this.calculateLiquidationCost(liquidationAmount);
-    const liquidationReward = liquidationAmount * liquidationBonus;
-    const netProfit = liquidationReward - costs.totalCost;
-    const profitMargin = netProfit / liquidationAmount;
+  updateConfig(newConfig: Partial<ScannerConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+    console.log('扫描器配置已更新:', this.config);
+  }
 
-    return {
-      liquidationReward,
-      netProfit,
-      profitMargin,
-    };
+  /**
+   * 手动触发扫描
+   */
+  async triggerScan(): Promise<ScanResult> {
+    if (this.isScanning) {
+      console.log('手动触发扫描...');
+      return this.performScan();
+    } else {
+      throw new Error('扫描器未启动');
+    }
   }
 }

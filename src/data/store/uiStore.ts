@@ -3,11 +3,12 @@ import { create } from 'zustand';
 export interface UIState {
   theme: 'light' | 'dark';
   sidebarOpen: boolean;
-  loading: boolean;
+  currentPage: string;
   notifications: Notification[];
+  loading: boolean;
 }
 
-export interface Notification {
+interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
@@ -17,49 +18,43 @@ export interface Notification {
 interface UIActions {
   setTheme: (theme: 'light' | 'dark') => void;
   toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  setLoading: (loading: boolean) => void;
+  setCurrentPage: (page: string) => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp'>) => void;
   removeNotification: (id: string) => void;
-  clearNotifications: () => void;
+  setLoading: (loading: boolean) => void;
 }
 
 type UIStore = UIState & UIActions;
 
-export const useUIStore = create<UIStore>((set, get) => ({
+export const useUIStore = create<UIStore>((set) => ({
   // 初始状态
-  theme: 'dark',
+  theme: 'light',
   sidebarOpen: true,
-  loading: false,
+  currentPage: 'trading',
   notifications: [],
+  loading: false,
 
   // 操作方法
-  setTheme: (theme: 'light' | 'dark') => set({ theme }),
+  setTheme: (theme) => set({ theme }),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
-  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
+  setCurrentPage: (page) => set({ currentPage: page }),
 
-  setLoading: (loading: boolean) => set({ loading }),
+  addNotification: (notification) => set((state) => ({
+    notifications: [
+      ...state.notifications,
+      {
+        ...notification,
+        id: Math.random().toString(36).substring(2, 15),
+        timestamp: Date.now()
+      }
+    ]
+  })),
 
-  addNotification: (notification) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    const timestamp = Date.now();
-    const newNotification: Notification = { ...notification, id, timestamp };
-
-    set((state) => ({
-      notifications: [...state.notifications, newNotification]
-    }));
-
-    // 自动移除通知
-    setTimeout(() => {
-      get().removeNotification(id);
-    }, 5000);
-  },
-
-  removeNotification: (id: string) => set((state) => ({
+  removeNotification: (id) => set((state) => ({
     notifications: state.notifications.filter(n => n.id !== id)
   })),
 
-  clearNotifications: () => set({ notifications: [] })
+  setLoading: (loading) => set({ loading })
 }));

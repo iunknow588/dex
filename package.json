@@ -1,11 +1,9 @@
 {
-  "name": "luckengine",
-  "displayName": "智运通交易系统",
+  "name": "luckee-flashloan",
+  "displayName": "智运通闪电贷系统",
   "version": "1.0.0",
+  "description": "基于 Injective 协议的闪电贷清算系统",
   "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -27,13 +25,16 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.36.2",
+    "@cosmjs/proto-signing": "^0.36.2",
+    "@cosmjs/stargate": "^0.36.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@injectivelabs/sdk-ts": "^1.16.22",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
+    "@mui/system": "^7.3.3",
     "@tanstack/react-query": "^5.90.5",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",

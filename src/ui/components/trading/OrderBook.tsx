@@ -2,89 +2,204 @@ import React from 'react';
 import {
   Box,
   Typography,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Chip,
+  useTheme,
 } from '@mui/material';
-import { useTradingStore } from '../../data/store/tradingStore';
+import { useTradingStore } from '../../../data/store/tradingStore';
 
 export const OrderBook: React.FC = () => {
   const { orderBook } = useTradingStore();
+  const theme = useTheme();
 
-  // 模拟订单簿数据
-  const mockOrderBook = {
-    marketId: 'INJ/USDT',
+  // 如果没有订单簿数据，使用模拟数据
+  const displayOrderBook = orderBook || {
     bids: [
-      { price: '99.50', quantity: '100', total: '9950' },
-      { price: '99.00', quantity: '200', total: '19800' },
-      { price: '98.50', quantity: '150', total: '14775' },
-      { price: '98.00', quantity: '300', total: '29400' },
-      { price: '97.50', quantity: '250', total: '24375' },
-    ],
+      ['25.40', '150.5'],
+      ['25.35', '200.0'],
+      ['25.30', '175.8'],
+      ['25.25', '120.3'],
+      ['25.20', '300.2'],
+    ] as [string, string][],
     asks: [
-      { price: '100.50', quantity: '100', total: '10050' },
-      { price: '101.00', quantity: '200', total: '20200' },
-      { price: '101.50', quantity: '150', total: '15225' },
-      { price: '102.00', quantity: '300', total: '30600' },
-      { price: '102.50', quantity: '250', total: '25625' },
-    ],
+      ['25.45', '180.7'],
+      ['25.50', '220.4'],
+      ['25.55', '165.9'],
+      ['25.60', '140.6'],
+      ['25.65', '190.1'],
+    ] as [string, string][],
     timestamp: Date.now(),
   };
 
-  const displayOrderBook = orderBook || mockOrderBook;
+  const formatPrice = (price: string) => parseFloat(price).toFixed(2);
+  const formatQuantity = (quantity: string) => parseFloat(quantity).toFixed(1);
+
+  // 计算总数量用于显示深度
+  const bidsWithTotal = (displayOrderBook.bids as [string, string][]).map((bid, index) => ({
+    price: bid[0],
+    quantity: bid[1],
+    total: (displayOrderBook.bids as [string, string][]).slice(0, index + 1).reduce((sum, b) => sum + parseFloat(b[1]), 0),
+  }));
+
+  const asksWithTotal = (displayOrderBook.asks as [string, string][]).map((ask, index) => ({
+    price: ask[0],
+    quantity: ask[1],
+    total: (displayOrderBook.asks as [string, string][]).slice(0, index + 1).reduce((sum, a) => sum + parseFloat(a[1]), 0),
+  }));
+
+  const maxBidTotal = Math.max(...bidsWithTotal.map(b => b.total));
+  const maxAskTotal = Math.max(...asksWithTotal.map(a => a.total));
 
   return (
-    <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h6" gutterBottom>
-        订单簿
+        订单簿 - INJ/USDT
       </Typography>
-      
-      <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-        <Table stickyHeader size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell align="center">价格</TableCell>
-              <TableCell align="center">数量</TableCell>
-              <TableCell align="center">总计</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {/* 卖盘 */}
-            {displayOrderBook.asks.map((ask, index) => (
-              <TableRow key={`ask-${index}`} sx={{ backgroundColor: 'rgba(255, 0, 0, 0.05)' }}>
-                <TableCell align="center" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                  {ask.price}
-                </TableCell>
-                <TableCell align="center">{ask.quantity}</TableCell>
-                <TableCell align="center">{ask.total}</TableCell>
-              </TableRow>
-            ))}
-            
-            {/* 分隔线 */}
-            <TableRow>
-              <TableCell colSpan={3} align="center" sx={{ border: 'none', py: 1 }}>
-                <Chip label="---" size="small" variant="outlined" />
-              </TableCell>
-            </TableRow>
-            
-            {/* 买盘 */}
-            {displayOrderBook.bids.map((bid, index) => (
-              <TableRow key={`bid-${index}`} sx={{ backgroundColor: 'rgba(0, 255, 0, 0.05)' }}>
-                <TableCell align="center" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                  {bid.price}
-                </TableCell>
-                <TableCell align="center">{bid.quantity}</TableCell>
-                <TableCell align="center">{bid.total}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>
+        {/* 卖单 (Asks) */}
+        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          <Typography variant="subtitle2" color="error.main" sx={{ mb: 1 }}>
+            卖单 (Asks)
+          </Typography>
+          <TableContainer component={Paper} sx={{ maxHeight: '200px', overflow: 'auto' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    价格
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    数量
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    累计
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {asksWithTotal.map((ask, index) => (
+                  <TableRow key={`ask-${index}`}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color: 'error.main',
+                        fontSize: '0.75rem',
+                        position: 'relative',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: `${(ask.total / maxAskTotal) * 100}%`,
+                          backgroundColor: theme.palette.error.main,
+                          opacity: 0.1,
+                          zIndex: 0,
+                        }}
+                      />
+                      <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        ${formatPrice(ask.price)}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>
+                      {formatQuantity(ask.quantity)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>
+                      {ask.total.toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+
+        {/* 最新价格显示 */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          py: 1,
+          borderTop: `1px solid ${theme.palette.divider}`,
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            $25.42
+          </Typography>
+        </Box>
+
+        {/* 买单 (Bids) */}
+        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          <Typography variant="subtitle2" color="success.main" sx={{ mb: 1 }}>
+            买单 (Bids)
+          </Typography>
+          <TableContainer component={Paper} sx={{ maxHeight: '200px', overflow: 'auto' }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    价格
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    数量
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    累计
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {bidsWithTotal.map((bid, index) => (
+                  <TableRow key={`bid-${index}`}>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color: 'success.main',
+                        fontSize: '0.75rem',
+                        position: 'relative',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: `${(bid.total / maxBidTotal) * 100}%`,
+                          backgroundColor: theme.palette.success.main,
+                          opacity: 0.1,
+                          zIndex: 0,
+                        }}
+                      />
+                      <Box sx={{ position: 'relative', zIndex: 1 }}>
+                        ${formatPrice(bid.price)}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>
+                      {formatQuantity(bid.quantity)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.75rem' }}>
+                      {bid.total.toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      </Box>
+
+      {/* 更新时间 */}
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+        更新时间: {new Date(displayOrderBook.timestamp).toLocaleTimeString()}
+      </Typography>
     </Box>
   );
 };

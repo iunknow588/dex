@@ -13,8 +13,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckIcon,
 } from '@mui/icons-material';
-import { useWalletStore } from '../../data/store/walletStore';
-import { WalletType } from '../../data/types';
+import { useWalletStore } from '../../../data/store/walletStore';
+import { WalletType } from '../../../data/types';
 
 const walletOptions = [
   { type: 'keplr' as WalletType, name: 'Keplr', icon: '🔗' },
