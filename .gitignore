@@ -2,9 +2,45 @@
 # 智运通交易系统 (LuckEngine) - Git忽略文件
 # ==================================================
 
-# 🚫 用户要求：文档和脚本目录完全排除
+# 🚫 用户要求：密码文件、文档和脚本目录完全排除
+
+# 🔐 密码和敏感文件
+passwords/
+secrets/
+config/secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_rsa.pub
+*.gpg
+*.asc
+*.secret
+*.token
+*credentials*
+*auth*
+*apikey*
+*api_key*
+*access_token*
+*refresh_token*
+
+# 📚 文档目录
 docs/
+
+# 🔧 脚本目录和文件
 scripts/
+*.sh
+*.js
+*.py
+*.bat
+*.cmd
+analyze-*.js
+find-*.js
+test-*.js
+git-commit.sh
 
 # 📦 依赖和构建产物
 node_modules/
@@ -90,3 +126,13 @@ PROJECT_SIZE_REPORT.md
 
 # 📝 编辑器备份
 *~
+.vercel
+
+# 🔄 备份和临时文件
+*.bak
+*.backup
+*.old
+temp_backup/
+*.temp_backup
+backup_*/
+*backup*
