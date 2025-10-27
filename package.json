@@ -1,8 +1,8 @@
 {
-  "name": "luckee-flashloan",
-  "displayName": "智运通闪电贷系统",
+  "name": "luckengine-dex",
+  "displayName": "智运通交易系统 (LuckEngine)",
   "version": "1.0.0",
-  "description": "基于 Injective 协议的闪电贷清算系统",
+  "description": "基于 Injective 区块链的去中心化交易所，提供三大交易模式：低风险合约交易、无风险套利交易、低风险闪电贷模式",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
